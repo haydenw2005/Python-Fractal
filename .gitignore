@@ -1,0 +1,4 @@
+# Ignore virtual environments
+venv/
+my_venv/
+my_venv310/
