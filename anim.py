@@ -11,8 +11,8 @@ from functools import lru_cache
 
 # Maximum recursion depth and delay between fractalizations
 MAX_RECURSION_DEPTH = 5
-RECURSION_DELAY = .25  # Seconds between each fractalization step
-SCALE_FACTOR = .2
+RECURSION_DELAY = 2  # Seconds between each fractalization step
+SCALE_FACTOR = 4
 
 # Cache midpoints to avoid recomputation
 midpoint_cache = {}
@@ -37,8 +37,12 @@ width, height = glfw.get_framebuffer_size(window)
 glViewport(0, 0, width, height)
 glEnable(GL_DEPTH_TEST)
 
+glLineWidth(8.0); 
 # Set the clear color
 glClearColor(0.1, 0.1, 0.1, 1.0)
+
+glEnable(GL_BLEND)
+glBlendFunc(GL_SRC_ALPHA, GL_ONE)
 
 # Vertex Shader Code (GLSL version 120)
 vertex_src = """
@@ -47,8 +51,14 @@ attribute vec3 a_position;
 uniform mat4 model;
 uniform mat4 view;
 uniform mat4 projection;
+varying vec3 v_color;  // Varying variable to pass color to fragment shader
+
 void main()
 {
+    // Compute color based on position
+    v_color = vec3(0.5, 0.2, 0.5);  // Purple color
+    
+    // Compute final position of the vertex
     gl_Position = projection * view * model * vec4(a_position, 1.0);
 }
 """
@@ -56,9 +66,19 @@ void main()
 # Fragment Shader Code (GLSL version 120)
 fragment_src = """
 #version 120
+varying vec3 v_color;
+
 void main()
 {
-    gl_FragColor = vec4(0.6, 0.4, 1.0, 1.0);  // Purple-like color
+    // Increase brightness
+    vec3 brightColor = v_color * 2.0;  // Make it twice as bright (adjust as needed)
+    
+    // Optional glow effect with simple alpha blending
+    float glowFactor = 0.5;  // Adjust this for how "glowy" it looks
+    vec4 glowColor = vec4(brightColor, glowFactor);  // Semi-transparent to simulate glow
+
+    // Final output color with full opacity
+    gl_FragColor = glowColor;
 }
 """
 
@@ -214,25 +234,33 @@ while not glfw.window_should_close(window):
 
     # Check if the delay has passed and update recursion depth
     current_time = glfw.get_time()
+    print(f"Time - {current_time}")
+
+    print(f"Num indices - {num_indices}")
+
+    print(f"Total shapes - {total_shapes}")
     if current_time - last_update_time > RECURSION_DELAY:
         if current_depth < MAX_RECURSION_DEPTH:
             current_depth += 1
-            print(current_depth % (10 * total_shapes))
             num_indices = update_fractal(current_depth % (10 * total_shapes), total_shapes)
             last_update_time = current_time
         else:
             total_shapes += 1
+        print(F"Hit at {current_depth % (10 * total_shapes)}")
+    print("\n\n")
+
         
 
     # Update the model matrix (rotation)
     
-    x_rotate = math.sin(current_time)
-    y_rotate = 1/math.sin(current_time)
-    z_rotate = math.sin(current_time)**2
+    x_rotate = math.log(current_time)
+    y_rotate = 1/math.log(current_time)
+    z_rotate = math.log(current_time)**2
     model = glm.rotate(glm.mat4(), current_time, glm.vec3(x_rotate, y_rotate, z_rotate))
     
-    scale = math.log(current_time/SCALE_FACTOR)
-    model = glm.scale(model, glm.vec3(current_time/SCALE_FACTOR, current_time/SCALE_FACTOR, current_time/SCALE_FACTOR))
+    scale = 1/math.log(current_time/SCALE_FACTOR)
+    cur_scale = scale 
+    model = glm.scale(model, glm.vec3(cur_scale, cur_scale, cur_scale))
 
     glUniformMatrix4fv(model_loc, 1, GL_FALSE, glm.value_ptr(model))
 
